@@ -1,0 +1,79 @@
+info:
+  description: Swagger schema for Nextflow server
+  title: nf-server
+  version: 1.0.0
+paths:
+  /submit:
+    post:
+      tags:
+      - submit
+      operationId: submitWorkflow
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "Submit a workflow"
+        schema:
+          $ref: "#/definitions/workflow_request"
+      responses:
+        "201":
+          description: Workflow submitted successfully
+          schema:
+            type: boolean
+        default:
+          description: generic error response
+          schema:
+            $ref: "#/definitions/error"
+  /status/{workflow_id}:
+    get:
+      tags:
+      - status
+      summary: checks workflow status
+      operationId: checkWorkflowStatus
+      parameters:
+      - name: workflow_id
+        in: path
+        type: string
+        required: true
+      responses:
+        "200":
+          description: Successful operation
+          schema:
+            type: object
+            required:
+              - status
+            properties:
+              status:
+                type: string
+        default:
+          description: generic error response
+          schema:
+            $ref: "#/definitions/error"
+produces:
+- application/io.goswagger.examples.casbin.v1+json
+schemes:
+- http
+- https
+swagger: "2.0"
+definitions:
+  workflow_request:
+    type: object
+    required:
+    - workflow
+    properties:
+      workflow:
+        type: string
+      wf_params:
+        type: object
+      nf_params:
+        type: object
+  error:
+    type: object
+    required:
+    - message
+    properties:
+      code:
+        type: integer
+        format: int64
+      message:
+        type: string
+
