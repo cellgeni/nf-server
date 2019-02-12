@@ -2,7 +2,26 @@ info:
   description: Swagger schema for Nextflow server
   title: nf-server
   version: 1.0.0
+security:
+  - APIKeyHeader: []
 paths:
+  /ping:
+    get:
+      tags:
+      - ping
+      summary: checks whether Nextflow is running on the server
+      operationId: pingNextflowServer
+      responses:
+        "200":
+          description: Server is up and running
+          schema:
+            $ref: "#/definitions/error"
+        "401":
+          $ref: "#/responses/UnauthorizedError"
+        "503":
+          description: Nextflow is not running on the server
+          schema:
+            $ref: "#/definitions/error"
   /submit:
     post:
       tags:
@@ -15,12 +34,23 @@ paths:
         schema:
           $ref: "#/definitions/workflow_request"
       responses:
-        "201":
-          description: Workflow submitted successfully
+        "202":
+          description: Workflow accepted for processing successfully
           schema:
-            type: boolean
+            type: object
+            required:
+            - workflow_id
+            properties:
+              workflow_id:
+                type: string
+        "401":
+          $ref: "#/responses/UnauthorizedError"
         default:
           description: generic error response
+          schema:
+            $ref: "#/definitions/error"
+        "422":
+          description: Workflow was not accepted for processing
           schema:
             $ref: "#/definitions/error"
   /status/{workflow_id}:
@@ -44,6 +74,8 @@ paths:
             properties:
               status:
                 type: string
+        "401":
+          $ref: "#/responses/UnauthorizedError"
         default:
           description: generic error response
           schema:
@@ -76,4 +108,15 @@ definitions:
         format: int64
       message:
         type: string
-
+securityDefinitions:
+   # X-API-Key: abcdef12345
+   APIKeyHeader:
+     type: apiKey
+     in: header
+     name: X-API-Key
+responses:
+  UnauthorizedError:
+    description: API key is missing or invalid
+    headers:
+      WWW_Authenticate:
+        type: string

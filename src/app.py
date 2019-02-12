@@ -1,7 +1,9 @@
+import http
 import os
 import re
 import subprocess
 import uuid
+from functools import wraps
 from threading import Thread
 from typing import Dict
 
@@ -16,6 +18,8 @@ class Status:
 
 
 app = Flask(__name__)
+auth_token = os.getenv("AUTH_TOKEN", "nfauthtoken")
+app.auth_token = auth_token
 
 
 def build_command(dir_name, workflow, wf_params: Dict = None, nf_params: Dict = None):
@@ -34,15 +38,27 @@ def get_wf_status(workflow_id):
     return Status.RUNNING
 
 
+def auth_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if request.headers.get("X-API-Key") != app.auth_token:
+            return jsonify(message="Auth token missing from the request"), http.HTTPStatus.UNAUTHORIZED
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
 @app.route('/ping')
+@auth_required
 def ping():
     if subprocess.run("nextflow -version".split()).returncode == 0:
-        return jsonify(success=True), 200
+        return jsonify(message="Nextflow server is up and running!"), http.HTTPStatus.OK
     else:
-        return jsonify(success=False), 500
+        return jsonify(message="Nextflow is not running"), http.HTTPStatus.SERVICE_UNAVAILABLE
 
 
 @app.route('/submit', methods=["POST"])
+@auth_required
 def submit_workflow():
     # wf_name: str, wf_params: Dict, nf_params: Dict
     data = request.args or request.get_json()
@@ -55,13 +71,14 @@ def submit_workflow():
     t = Thread(target=async_run(command=command))
     t.start()
 
-    return f'Workflow {dir_name} submitted', 201
+    return jsonify(workflow_id=dir_name), http.HTTPStatus.ACCEPTED
 
 
 @app.route('/status/<workflow_id>', methods=["GET"])
+@auth_required
 def check_status(workflow_id):
     status = get_wf_status(workflow_id)
-    return jsonify(status=status), 200
+    return jsonify(status=status), http.HTTPStatus.OK
 
 
 if __name__ == '__main__':
