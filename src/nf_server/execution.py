@@ -1,11 +1,11 @@
-import shlex
+import logging
 import subprocess
 
 k = ""
 
 
 def execute(cmd):
-    popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
+    popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, shell=True)
     for stdout_line in iter(popen.stdout.readline, ""):
         yield stdout_line
     popen.stdout.close()
@@ -15,8 +15,9 @@ def execute(cmd):
 
 
 def async_run(command):
-    # Example
     global k
-    for path in execute(shlex.split(command)):
-        print(path)
+    c = command
+    logging.info(f"Command to run {c}")
+    for path in execute(c):
+        logging.info(f"Stdout: {path}")
         k += path

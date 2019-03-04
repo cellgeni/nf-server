@@ -1,16 +1,18 @@
 import http
+import logging
 import os
 import re
 import subprocess
 import uuid
 from functools import wraps
-from threading import Thread
+from time import sleep
 from typing import Dict
 
 from flask import Flask, request, jsonify
 
-from execution import async_run
+from .tasks import run_workflow
 
+MAX_RETRIES = 3
 
 class Status:
     RUNNING = "RUNNING"
@@ -21,20 +23,35 @@ app = Flask(__name__)
 auth_token = os.getenv("AUTH_TOKEN", "nfauthtoken")
 app.auth_token = auth_token
 
+WORKFLOW_PATH = os.getenv("WORKFLOW_PATH", os.getcwd())
+
 
 def build_command(dir_name, workflow, wf_params: Dict = None, nf_params: Dict = None):
-    cmd = f"nextflow -log {dir_name}/log run {workflow} -w {dir_name}"
-    for param, value in wf_params:
-        cmd += f" -{param} {value}"
-    for param, value in nf_params:
+    cmd = f"cd {dir_name} && nextflow -log log run {workflow} -w work -resume"
+    for param, value in wf_params.items():
+        cmd += f" --{param}={value}"
+    for param, value in nf_params.items():
         cmd += f" -{param} {value}"
     return cmd
 
 
 def get_wf_status(workflow_id):
-    with open(os.path.join(workflow_id, "log")) as f:
-        if re.search("Goodbye", f.readlines()[-1]):
-            return Status.COMPLETED
+    i = 0
+    while i < MAX_RETRIES:
+        try:
+            with open(os.path.join(WORKFLOW_PATH, workflow_id, "log")) as f:
+                content = f.readlines()
+                logging.info(f"Content: {content}")
+                if re.search("Goodbye", content[-1]):
+                    return Status.COMPLETED
+                else:
+                    # job failed condition check
+                    pass
+                break
+        except FileNotFoundError:
+            sleep(1)
+            i += 1
+            pass
     return Status.RUNNING
 
 
@@ -60,18 +77,20 @@ def ping():
 @app.route('/submit', methods=["POST"])
 @auth_required
 def submit_workflow():
-    # wf_name: str, wf_params: Dict, nf_params: Dict
     data = request.args or request.get_json()
     workflow = data.get("workflow", "")
     wf_params = data.get("wf_params", {})
     nf_params = data.get("nf_params", {})
-    dir_name = str(uuid.uuid4())
-    os.mkdir(dir_name)
-    command = build_command(dir_name, workflow, wf_params, nf_params)
-    t = Thread(target=async_run(command=command))
-    t.start()
-
-    return jsonify(workflow_id=dir_name), http.HTTPStatus.ACCEPTED
+    file_inputs = data.get("file_inputs", {})
+    wf_name = str(uuid.uuid4())
+    workdir = os.path.join(WORKFLOW_PATH, wf_name)
+    os.mkdir(workdir)
+    for filename, content in file_inputs.items():
+        with open(os.path.join(workdir, filename), 'w') as f:
+            f.write(content)
+    command = build_command(workdir, workflow, wf_params, nf_params)
+    run_workflow.delay(command=command)
+    return jsonify(workflow_id=wf_name), http.HTTPStatus.ACCEPTED
 
 
 @app.route('/status/<workflow_id>', methods=["GET"])

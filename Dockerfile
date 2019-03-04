@@ -84,3 +84,4 @@ COPY src/requirements.txt /tmp/requirements.txt
 RUN pip install --upgrade pip && pip install -r /tmp/requirements.txt
 
 COPY src/ /app/
+WORKDIR /app

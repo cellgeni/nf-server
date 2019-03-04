@@ -5,6 +5,7 @@ info:
 security:
   - APIKeyHeader: []
 paths:
+
   /ping:
     get:
       tags:
@@ -22,6 +23,7 @@ paths:
           description: Nextflow is not running on the server
           schema:
             $ref: "#/definitions/error"
+
   /submit:
     post:
       tags:
@@ -53,6 +55,7 @@ paths:
           description: Workflow was not accepted for processing
           schema:
             $ref: "#/definitions/error"
+
   /status/{workflow_id}:
     get:
       tags:
@@ -87,6 +90,7 @@ schemes:
 - https
 swagger: "2.0"
 definitions:
+
   workflow_request:
     type: object
     required:
@@ -98,6 +102,9 @@ definitions:
         type: object
       nf_params:
         type: object
+      file_inputs:
+        type: object
+
   error:
     type: object
     required:
@@ -109,7 +116,6 @@ definitions:
       message:
         type: string
 securityDefinitions:
-   # X-API-Key: abcdef12345
    APIKeyHeader:
      type: apiKey
      in: header
