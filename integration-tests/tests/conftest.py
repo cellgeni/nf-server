@@ -1,7 +1,6 @@
 import os
-
-import urllib
 import urllib.parse
+
 import pytest
 import yaml
 from bravado.client import SwaggerClient
@@ -34,3 +33,33 @@ def client():
 @pytest.fixture(scope='module')
 def unauthenticated_client():
     return get_client(auth_token='')
+
+
+def get_basic_nf(failing=False):
+    with open("basic_nf/basic.nf") as f1:
+        wf = f1.read()
+    with open("basic_nf/docker.config") as f2:
+        docker_config = f2.read()
+    with open("basic_nf/sample.fa") as f3:
+        sample_fa = f3.read()
+    return {"workflow": "basic.nf",
+            "wf_params": {
+                "in": "sample.fa"
+            },
+            "nf_params": {
+            },
+            "file_inputs": {
+                "docker.config": docker_config,
+                "sample.fa": sample_fa,
+                "basic.nf": wf if not failing else wf.replace("input.fa", "input.fa && exit 1")
+            }}
+
+
+@pytest.fixture(scope='function')
+def basic_nf():
+    return get_basic_nf()
+
+
+@pytest.fixture(scope='function')
+def basic_nf_failing():
+    return get_basic_nf(failing=True)

@@ -1,0 +1,50 @@
+version: '3.4'
+
+services:
+
+  redis:
+    image: redis
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -h $$(hostname) ping"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+
+  nf-server:
+    image: nf-server
+    environment:
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    - WORKFLOW_PATH=/workflows
+    depends_on:
+    - redis
+    volumes:
+    - wf-volume:/workflows
+    ports:
+      - 9005:8000
+      
+  worker:
+    image: nf-server
+    environment:
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    - WORKFLOW_PATH=/workflows
+    volumes:
+    - wf-volume:/workflows
+    depends_on:
+    - redis
+    command: ["celery", "-A", "nf_server.celery_app:celery_app", "worker", "-l", "info"]
+
+
+  flower:
+    image: mher/flower
+    environment:
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - FLOWER_PORT=8888
+    depends_on:
+    - redis
+    ports:
+    - 8888:8888
+
+volumes:
+     wf-volume:

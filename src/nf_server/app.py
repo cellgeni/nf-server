@@ -14,9 +14,11 @@ from .tasks import run_workflow
 
 MAX_RETRIES = 3
 
+
 class Status:
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
 
 
 app = Flask(__name__)
@@ -40,14 +42,15 @@ def get_wf_status(workflow_id):
     while i < MAX_RETRIES:
         try:
             with open(os.path.join(WORKFLOW_PATH, workflow_id, "log")) as f:
-                content = f.readlines()
-                logging.info(f"Content: {content}")
-                if re.search("Goodbye", content[-1]):
-                    return Status.COMPLETED
-                else:
-                    # job failed condition check
-                    pass
-                break
+                content = f.read().strip()
+                lines = content.split('\n')
+                logging.info(f"Content: {lines}")
+                if re.search("Goodbye", lines[-1]):
+                    if re.search("exit status", content):
+                        return Status.FAILED
+                    else:
+                        return Status.COMPLETED
+                return Status.RUNNING
         except FileNotFoundError:
             sleep(1)
             i += 1
