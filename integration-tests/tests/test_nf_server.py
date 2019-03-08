@@ -21,20 +21,21 @@ def test_basic_workflow(client, basic_nf):
     workflow_id = r.result.get("workflow_id")
     r = client.status.checkWorkflowStatus(workflow_id=workflow_id).response()
     assert r.result.get("status") == "RUNNING"
-    sleep(10)
+    sleep(15)
     r = client.status.checkWorkflowStatus(workflow_id=workflow_id).response()
     assert r.result.get("status") == "COMPLETED"
 
 
-def test_basic_workflow_failed(client, basic_nf_failing):
+def test_basic_workflow_failing(client, basic_nf_failing):
     r = client.submit.submitWorkflow(body=basic_nf_failing).response()
     assert r.metadata.status_code == http.HTTPStatus.ACCEPTED
     workflow_id = r.result.get("workflow_id")
     r = client.status.checkWorkflowStatus(workflow_id=workflow_id).response()
     assert r.result.get("status") == "RUNNING"
-    sleep(10)
+    sleep(8)
     r = client.status.checkWorkflowStatus(workflow_id=workflow_id).response()
     assert r.result.get("status") == "FAILED"
+    assert r.result.get("error_code") == 1
 
 
 def test_submit_unauthenticated(unauthenticated_client):

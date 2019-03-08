@@ -77,6 +77,8 @@ paths:
             properties:
               status:
                 type: string
+              error_code:
+                type: integer
         "401":
           $ref: "#/responses/UnauthorizedError"
         default:

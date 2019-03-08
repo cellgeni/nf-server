@@ -1,3 +1,4 @@
 flask
 bravado
 celery[redis]==4.3.0rc1
+wdb

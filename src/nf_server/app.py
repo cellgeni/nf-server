@@ -46,16 +46,18 @@ def get_wf_status(workflow_id):
                 lines = content.split('\n')
                 logging.info(f"Content: {lines}")
                 if re.search("Goodbye", lines[-1]):
-                    if re.search("exit status", content):
-                        return Status.FAILED
+                    m = re.search(r"(exit status)(\D*)(\d+)", content)
+                    if m:
+                        exit_code = m.groups()[2]
+                        return Status.FAILED, int(exit_code)
                     else:
-                        return Status.COMPLETED
-                return Status.RUNNING
+                        return Status.COMPLETED, None
+                return Status.RUNNING, None
         except FileNotFoundError:
             sleep(1)
             i += 1
             pass
-    return Status.RUNNING
+    return Status.RUNNING, None
 
 
 def auth_required(f):
@@ -99,8 +101,12 @@ def submit_workflow():
 @app.route('/status/<workflow_id>', methods=["GET"])
 @auth_required
 def check_status(workflow_id):
-    status = get_wf_status(workflow_id)
-    return jsonify(status=status), http.HTTPStatus.OK
+    status, error_code = get_wf_status(workflow_id)
+    # swagger 2.0 doesn't support null type
+    if error_code:
+        return jsonify(status=status, error_code=error_code), http.HTTPStatus.OK
+    else:
+        return jsonify(status=status), http.HTTPStatus.OK
 
 
 if __name__ == '__main__':
