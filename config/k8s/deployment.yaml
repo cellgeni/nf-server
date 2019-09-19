@@ -1,0 +1,272 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+spec:
+  selector:
+    matchLabels:
+      app: redis
+  replicas: 1
+  template:
+    metadata:
+      name: redis
+      labels:
+        app: redis
+    spec:
+      containers:
+      - image: redis
+        imagePullPolicy: IfNotPresent
+        name: redis
+        ports:
+        - containerPort: 6379
+          name: redis
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: 1
+          limits:
+            memory: "2Gi"
+            cpu: 2
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - redis-cli -h $(hostname) ping
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 240
+          successThreshold: 1
+          timeoutSeconds: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nf-server
+spec:
+  selector:
+    matchLabels:
+      app: nf-server
+  replicas: 1
+  template:
+    metadata:
+      name: nf-server
+      labels:
+        app: nf-server
+    spec:
+      containers:
+      - image: quay.io/cellgeni/nf-server:latest
+        imagePullPolicy: Always
+        name: nf-server
+        volumeMounts:
+        - name: workflows
+          mountPath: /workspace
+        env:
+        - name: CELERY_BROKER_URL
+          value: redis://redis.default.svc.cluster.local:6379/0
+        - name: AUTH_TOKEN
+          value: test-authtoken
+        - name: CELERY_RESULT_BACKEND
+          value: redis://redis.default.svc.cluster.local:6379/0
+        - name: WORKFLOW_PATH
+          value: /workspace
+        ports:
+        - containerPort: 8000
+          hostPort: 18035
+          name: nf-server
+          volumes:
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: 1
+          limits:
+            memory: "2Gi"
+            cpu: 2
+#        livenessProbe:
+#          httpGet:
+#            path: /ping
+#            port: nf-server
+#          initialDelaySeconds: 10
+#          timeoutSeconds: 15
+#          periodSeconds: 500
+      volumes:
+      - name: workflows
+        persistentVolumeClaim:
+          claimName: nf-pvc
+#---
+#apiVersion: apps/v1
+#kind: Deployment
+#metadata:
+#  name: worker
+#spec:
+#  selector:
+#    matchLabels:
+#      app: worker
+#  replicas: 1
+#  template:
+#    metadata:
+#      name: worker
+#      labels:
+#        app: worker
+#    spec:
+#      containers:
+#      - image: quay.io/cellgeni/nf-server:latest
+#        imagePullPolicy: Always
+#        name: nf-worker
+#        volumeMounts:
+#        - name: workflows
+#          mountPath: /workspace
+#        - name: nf-config
+#          mountPath: /etc/nextflow
+#        env:
+#        - name: CELERY_BROKER_URL
+#          value: redis://redis.default.svc.cluster.local:6379/0
+#        - name: CELERY_RESULT_BACKEND
+#          value: redis://redis.default.svc.cluster.local:6379/0
+#        - name: AUTH_TOKEN
+#          value: test-authtoken
+#        - name: WORKFLOW_PATH
+#          value: /workspace
+#        - name: NXF_WORK
+#          value: /workspace/work
+#        - name: NXF_ASSETS
+#          value: /workspace/projects
+#        - name: NXF_EXECUTOR
+#          value: k8s
+#
+#        command: ["celery"]
+#        args: ["-A", "nf_server.celery_app.celery_app", "worker", "-l", "info"]
+#        resources:
+#          requests:
+#            memory: "512Mi"
+#            cpu: 1
+#          limits:
+#            memory: "2Gi"
+#            cpu: 2
+#        livenessProbe:
+#          exec:
+#            command:
+#            - "/bin/sh"
+#            - "-c"
+#            - "celery status | grep OK"
+#          failureThreshold: 3
+#          initialDelaySeconds: 10
+#          periodSeconds: 240
+#          successThreshold: 1
+#          timeoutSeconds: 1
+#      volumes:
+#      - name: workflows
+#        persistentVolumeClaim:
+#          claimName: nf-pvc
+#      - name: nf-config
+#        configMap:
+#          name: nf-config-10af9729
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  selector:
+    matchLabels:
+      app: nextflow
+  replicas: 1
+  template:
+    metadata:
+      name: worker
+      labels:
+        app: nextflow
+    spec:
+      containers:
+      - image: quay.io/cellgeni/nf-server:latest
+        imagePullPolicy: Always
+        name: nf-worker
+        volumeMounts:
+        - name: workflows
+          mountPath: /workspace
+        - name: nf-config
+          mountPath: /etc/nextflow
+        env:
+        - name: CELERY_BROKER_URL
+          value: redis://redis.default.svc.cluster.local:6379/0
+        - name: CELERY_RESULT_BACKEND
+          value: redis://redis.default.svc.cluster.local:6379/0
+        - name: AUTH_TOKEN
+          value: test-authtoken
+        - name: WORKFLOW_PATH
+          value: /workspace
+        - name: NXF_WORK
+          value: /workspace/svd/work
+        - name: NXF_ASSETS
+          value: /workspace/projects
+        - name: NXF_EXECUTOR
+          value: k8s
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: s3-secret
+              key: AWS_ACCESS_KEY_ID
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: s3-secret
+              key: AWS_SECRET_ACCESS_KEY
+        command: ["celery"]
+        args: ["-A", "nf_server.celery_app.celery_app", "worker", "-l", "info"]
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: 1
+          limits:
+            memory: "2Gi"
+            cpu: 2
+        livenessProbe:
+          exec:
+            command:
+            - "/bin/sh"
+            - "-c"
+            - "celery status | grep OK"
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 240
+          successThreshold: 1
+          timeoutSeconds: 1
+      volumes:
+      - name: workflows
+        persistentVolumeClaim:
+          claimName: nf-pvc
+      - name: nf-config
+        configMap:
+          name: nf-config-10af9729
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flower
+spec:
+  selector:
+    matchLabels:
+      app: flower
+  replicas: 1
+  template:
+    metadata:
+      name: flower
+      labels:
+        app: flower
+    spec:
+      containers:
+      - image: mher/flower
+        imagePullPolicy: IfNotPresent
+        name: nf-server
+        env:
+        - name: CELERY_BROKER_URL
+          value: redis://redis.default.svc.cluster.local:6379/0
+        - name: FLOWER_PORT
+          value: "8888"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: 50m
+          limits:
+            memory: "1Gi"
+            cpu: 100m
