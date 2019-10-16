@@ -35,8 +35,6 @@ RUN { \
 RUN ln -svT "/usr/lib/jvm/java-8-openjdk-$(dpkg --print-architecture)" /docker-java-home
 ENV JAVA_HOME /docker-java-home/jre
 
-ENV JAVA_VERSION 8u181
-ENV JAVA_DEBIAN_VERSION 8u181-b13-2~deb9u1
 
 RUN set -ex; \
 	\
@@ -47,7 +45,7 @@ RUN set -ex; \
 	\
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
-		openjdk-8-jre="$JAVA_DEBIAN_VERSION" \
+		openjdk-8-jre \
 	; \
 	rm -rf /var/lib/apt/lists/*; \
 	\
@@ -69,7 +67,7 @@ RUN set -ex; \
 
 ENV NXF_OPTS='-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap' NXF_HOME=/.nextflow
 
-RUN export NXF_VER=18.10.1 && wget -qO- https://get.nextflow.io | bash
+RUN export NXF_VER=19.09.0-edge && wget -qO- https://get.nextflow.io | bash
 
 RUN mv nextflow /usr/local/bin/nextflow
 

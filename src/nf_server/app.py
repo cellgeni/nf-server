@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import uuid
+from abc import ABC, abstractmethod
 from functools import wraps
 from time import sleep
 from typing import Dict
@@ -12,7 +13,7 @@ from flask import Flask, request, jsonify
 
 from .tasks import run_workflow
 
-MAX_RETRIES = 3
+BASE_PATH = 'BASE_PATH'
 
 
 class Status:
@@ -21,11 +22,78 @@ class Status:
     FAILED = "FAILED"
 
 
-app = Flask(__name__)
-auth_token = os.getenv("AUTH_TOKEN", "nfauthtoken")
-app.auth_token = auth_token
+class Workflow:
 
-WORKFLOW_PATH = os.getenv("WORKFLOW_PATH", os.getcwd())
+    def __init__(self, id):
+        self.id = id
+
+
+class WorkflowTracker(ABC):
+    """
+    an abstract class is needed cause there can be other ways to track workflow status,
+    e.g. Nextflow Tower, then we would query Tower's API for the workflow status
+    """
+
+    @staticmethod
+    @abstractmethod
+    def get_wf_status(workflow_id):
+        pass
+
+
+class FileSystemWorkflowTracker(WorkflowTracker):
+
+    def __init__(self, max_retries=3):
+        self.max_retries = max_retries
+
+    @staticmethod
+    def _construct_log_path(workflow):
+        return os.path.join(app.config[BASE_PATH], workflow.id, "log")
+
+    def _parse_log_status(self, workflow):
+        with open(self._construct_log_path(workflow)) as f:
+            content = f.read().strip()
+            lines = content.split('\n')
+            logging.info(f"Content: {lines}")
+            if re.search("Goodbye", lines[-1]):
+                m = re.search(r"(exit status)(\D*)(\d+)", content)
+                if m:
+                    exit_code = m.groups()[2]
+                    return Status.FAILED, int(exit_code)
+                else:
+                    return Status.COMPLETED, None
+            return Status.RUNNING, None
+
+    def get_wf_status(self, workflow: Workflow):
+        TIMEOUT = 1
+        i = 0
+        while i < self.max_retries:
+            try:
+                return self._parse_log_status(workflow)
+            except FileNotFoundError:
+                sleep(TIMEOUT)
+                i += 1
+                pass
+        return Status.RUNNING, None
+
+
+class NfServerApp(Flask):
+
+    def __init__(self):
+        super().__init__(__name__)
+        self.workflow_tracker = FileSystemWorkflowTracker()
+        self._init_configs()
+
+    def _init_configs(self):
+        auth_token = os.getenv("AUTH_TOKEN", "nfauthtoken")
+        self.auth_token = auth_token
+        self.config[BASE_PATH] = os.getenv(BASE_PATH, os.getcwd())
+
+    def get_wf_status(self, workflow_id):
+        workflow = Workflow(workflow_id)
+        return self.workflow_tracker.get_wf_status(workflow)
+
+
+app = NfServerApp()
 
 
 def build_command(dir_name, workflow, wf_params: Dict = None, nf_params: Dict = None):
@@ -35,29 +103,6 @@ def build_command(dir_name, workflow, wf_params: Dict = None, nf_params: Dict = 
     for param, value in nf_params.items():
         cmd += f" -{param} {value}"
     return cmd
-
-
-def get_wf_status(workflow_id):
-    i = 0
-    while i < MAX_RETRIES:
-        try:
-            with open(os.path.join(WORKFLOW_PATH, workflow_id, "log")) as f:
-                content = f.read().strip()
-                lines = content.split('\n')
-                logging.info(f"Content: {lines}")
-                if re.search("Goodbye", lines[-1]):
-                    m = re.search(r"(exit status)(\D*)(\d+)", content)
-                    if m:
-                        exit_code = m.groups()[2]
-                        return Status.FAILED, int(exit_code)
-                    else:
-                        return Status.COMPLETED, None
-                return Status.RUNNING, None
-        except FileNotFoundError:
-            sleep(1)
-            i += 1
-            pass
-    return Status.RUNNING, None
 
 
 def auth_required(f):
@@ -88,7 +133,7 @@ def submit_workflow():
     nf_params = data.get("nf_params", {})
     file_inputs = data.get("file_inputs", {})
     wf_name = str(uuid.uuid4())
-    workdir = os.path.join(WORKFLOW_PATH, wf_name)
+    workdir = os.path.join(BASE_PATH, wf_name)
     os.mkdir(workdir)
     for filename, content in file_inputs.items():
         with open(os.path.join(workdir, filename), 'w') as f:
@@ -101,7 +146,7 @@ def submit_workflow():
 @app.route('/status/<workflow_id>', methods=["GET"])
 @auth_required
 def check_status(workflow_id):
-    status, error_code = get_wf_status(workflow_id)
+    status, error_code = app.get_wf_status(workflow_id)
     # swagger 2.0 doesn't support null type
     if error_code:
         return jsonify(status=status, error_code=error_code), http.HTTPStatus.OK

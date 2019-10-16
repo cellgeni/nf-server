@@ -68,7 +68,7 @@ spec:
           value: test-authtoken
         - name: CELERY_RESULT_BACKEND
           value: redis://redis.default.svc.cluster.local:6379/0
-        - name: WORKFLOW_PATH
+        - name: BASE_PATH
           value: /workspace
         ports:
         - containerPort: 8000
@@ -125,7 +125,7 @@ spec:
 #          value: redis://redis.default.svc.cluster.local:6379/0
 #        - name: AUTH_TOKEN
 #          value: test-authtoken
-#        - name: WORKFLOW_PATH
+#        - name: BASE_PATH
 #          value: /workspace
 #        - name: NXF_WORK
 #          value: /workspace/work
@@ -193,7 +193,7 @@ spec:
           value: redis://redis.default.svc.cluster.local:6379/0
         - name: AUTH_TOKEN
           value: test-authtoken
-        - name: WORKFLOW_PATH
+        - name: BASE_PATH
           value: /workspace
         - name: NXF_WORK
           value: /workspace/svd/work

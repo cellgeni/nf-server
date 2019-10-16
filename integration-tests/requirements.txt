@@ -1,3 +1,4 @@
 bravado
 pytest
 requests
+pytest-cov

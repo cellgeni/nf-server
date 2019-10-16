@@ -15,7 +15,7 @@ services:
     environment:
     - CELERY_BROKER_URL=redis://redis:6379/0
     - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    - WORKFLOW_PATH=/workflows
+    - BASE_PATH=/workflows
     depends_on:
     - redis
     volumes:
@@ -28,7 +28,7 @@ services:
     environment:
     - CELERY_BROKER_URL=redis://redis:6379/0
     - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    - WORKFLOW_PATH=/workflows
+    - BASE_PATH=/workflows
     volumes:
     - wf-volume:/workflows
     depends_on:
