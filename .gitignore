@@ -1,1 +1,5 @@
 .nextflow
+.idea/
+__pycache__/
+*.pyc
+test_results/

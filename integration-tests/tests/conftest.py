@@ -9,6 +9,11 @@ from bravado.requests_client import RequestsClient
 HOST = os.getenv("NF_SERVER_HOST", "http://127.0.0.1:5000")
 HOSTNAME = urllib.parse.urlsplit(HOST).hostname
 AUTH_TOKEN = os.getenv("AUTH_TOKEN", "nfauthtoken")
+TEST_FILES_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "basic_nf")
+
+
+def get_test_file(filename):
+    return os.path.join(TEST_FILES_ROOT, f"{filename}")
 
 
 def get_client(auth_token=AUTH_TOKEN):
@@ -36,11 +41,11 @@ def unauthenticated_client():
 
 
 def get_basic_nf(failing=False):
-    with open("basic_nf/basic.nf") as f1:
+    with open(get_test_file("basic.nf")) as f1:
         wf = f1.read()
-    with open("basic_nf/docker.config") as f2:
+    with open(get_test_file("docker.config")) as f2:
         docker_config = f2.read()
-    with open("basic_nf/sample.fa") as f3:
+    with open(get_test_file("sample.fa")) as f3:
         sample_fa = f3.read()
     return {"workflow": "basic.nf",
             "wf_params": {
