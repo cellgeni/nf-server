@@ -67,10 +67,9 @@ RUN set -ex; \
 
 ENV NXF_OPTS='-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap' NXF_HOME=/.nextflow
 
-RUN export NXF_VER=19.09.0-edge && wget -qO- https://get.nextflow.io | bash
+RUN wget -qO- https://get.nextflow.io | bash
 
 RUN mv nextflow /usr/local/bin/nextflow
-
 
 ########################## Installing nf-server
 
@@ -79,7 +78,7 @@ ENV LISTEN_PORT 8000
 EXPOSE 8000
 
 COPY src/requirements.txt /tmp/requirements.txt
-RUN pip install --upgrade pip && pip install -r /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt
 
 COPY src/ /app/
 WORKDIR /app
