@@ -17,14 +17,12 @@ paths:
           description: Server is up and running
           schema:
             $ref: "#/definitions/error"
-        "401":
-          $ref: "#/responses/UnauthorizedError"
         "503":
           description: Nextflow is not running on the server
           schema:
             $ref: "#/definitions/error"
 
-  /submit:
+  /jobs:
     post:
       tags:
       - submit
@@ -32,18 +30,18 @@ paths:
       parameters:
       - in: "body"
         name: "body"
-        description: "Submit a workflow"
+        description: "Submit a job"
         schema:
-          $ref: "#/definitions/workflow_request"
+          $ref: "#/definitions/job_request"
       responses:
         "202":
           description: Workflow accepted for processing successfully
           schema:
             type: object
             required:
-            - workflow_id
+            - job_id
             properties:
-              workflow_id:
+              job_id:
                 type: string
         "401":
           $ref: "#/responses/UnauthorizedError"
@@ -56,14 +54,14 @@ paths:
           schema:
             $ref: "#/definitions/error"
 
-  /status/{workflow_id}:
+  /jobs/{job_id}:
     get:
       tags:
-      - status
+      - job
       summary: checks workflow status
-      operationId: checkWorkflowStatus
+      operationId: getJob
       parameters:
-      - name: workflow_id
+      - name: job_id
         in: path
         type: string
         required: true
@@ -85,15 +83,39 @@ paths:
           description: generic error response
           schema:
             $ref: "#/definitions/error"
-produces:
-- application/io.goswagger.examples.casbin.v1+json
+    delete:
+      tags:
+        - job
+        summary: deletes a job
+        operationId: deleteJob
+        parameters:
+          - name: job_id
+            in: path
+            type: string
+            required: true
+        responses:
+          "200":
+            description: Successful operation
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+          "401":
+            $ref: "#/responses/UnauthorizedError"
+          default:
+            description: generic error response
+            schema:
+              $ref: "#/definitions/error"
 schemes:
 - http
 - https
 swagger: "2.0"
 definitions:
 
-  workflow_request:
+  job_request:
     type: object
     required:
     - workflow
@@ -101,10 +123,6 @@ definitions:
       workflow:
         type: string
       wf_params:
-        type: object
-      nf_params:
-        type: object
-      file_inputs:
         type: object
 
   error:
