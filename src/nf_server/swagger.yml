@@ -26,7 +26,7 @@ paths:
     post:
       tags:
       - submit
-      operationId: submitWorkflow
+      operationId: submitJob
       parameters:
       - in: "body"
         name: "body"
@@ -35,7 +35,7 @@ paths:
           $ref: "#/definitions/job_request"
       responses:
         "202":
-          description: Workflow accepted for processing successfully
+          description: Job accepted for processing successfully
           schema:
             type: object
             required:
@@ -50,7 +50,7 @@ paths:
           schema:
             $ref: "#/definitions/error"
         "422":
-          description: Workflow was not accepted for processing
+          description: Job was not accepted for processing
           schema:
             $ref: "#/definitions/error"
 
@@ -58,7 +58,7 @@ paths:
     get:
       tags:
       - job
-      summary: checks workflow status
+      summary: retrieves job information
       operationId: getJob
       parameters:
       - name: job_id
@@ -83,32 +83,32 @@ paths:
           description: generic error response
           schema:
             $ref: "#/definitions/error"
-    delete:
-      tags:
-        - job
-        summary: deletes a job
-        operationId: deleteJob
-        parameters:
-          - name: job_id
-            in: path
-            type: string
-            required: true
-        responses:
-          "200":
-            description: Successful operation
-            schema:
-              type: object
-              required:
-                - status
-              properties:
-                status:
-                  type: string
-          "401":
-            $ref: "#/responses/UnauthorizedError"
-          default:
-            description: generic error response
-            schema:
-              $ref: "#/definitions/error"
+#    delete:
+#      tags:
+#        - job
+#      summary: deletes a job
+#      operationId: deleteJob
+#      parameters:
+#        - name: job_id
+#          in: body
+#          type: string
+#          required: true
+#      responses:
+#        "200":
+#          description: Successful operation
+#          schema:
+#            type: object
+#            required:
+#              - status
+#            properties:
+#              status:
+#                type: string
+#        "401":
+#          $ref: "#/responses/UnauthorizedError"
+#        default:
+#          description: generic error response
+#          schema:
+#            $ref: "#/definitions/error"
 schemes:
 - http
 - https
@@ -124,6 +124,17 @@ definitions:
         type: string
       wf_params:
         type: object
+
+  job:
+    type: object
+    required:
+      - job_id
+      - status
+    properties:
+      job_id:
+        type: string
+      status:
+        type: string
 
   error:
     type: object

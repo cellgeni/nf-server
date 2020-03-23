@@ -4,3 +4,5 @@ celery[redis]==4.3.0rc1
 wdb
 Flask-SQLAlchemy==2.4.1
 sqlalchemy-utils
+
+https://git.openstack.org/openstack/python-jenkins

@@ -2,7 +2,7 @@ version: '3.4'
 
 services:
 
-  redis:
+  jenkins :
     image: redis
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -h $$(hostname) ping"]
@@ -15,11 +15,12 @@ services:
     environment:
     - CELERY_BROKER_URL=redis://redis:6379/0
     - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    - BASE_PATH=/workflows
+    - JENKINS_HOST=http://localhost:8080
+    - JENKINS_USER=admin
+    - JENKINS_PASSWORD=117a4e6d7744a4a748f251872046b1f161
+    - NEXTFLOW_JOB_NAME=bash
     depends_on:
     - redis
-    volumes:
-    - wf-volume:/workflows
     ports:
       - 9005:8000
       
@@ -28,23 +29,6 @@ services:
     environment:
     - CELERY_BROKER_URL=redis://redis:6379/0
     - CELERY_RESULT_BACKEND=redis://redis:6379/0
-    - BASE_PATH=/workflows
-    volumes:
-    - wf-volume:/workflows
     depends_on:
     - redis
     command: ["celery", "-A", "nf_server.celery_app:celery_app", "worker", "-l", "info"]
-
-
-  flower:
-    image: mher/flower
-    environment:
-    - CELERY_BROKER_URL=redis://redis:6379/0
-    - FLOWER_PORT=8888
-    depends_on:
-    - redis
-    ports:
-    - 8888:8888
-
-volumes:
-     wf-volume:

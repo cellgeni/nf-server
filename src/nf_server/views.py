@@ -21,6 +21,7 @@ def submit_job():
     wf = Workflow.query.get(name=workflow)
     command = wf.build_command(params)
     job = Job(workflow=wf, command=command)
+    job.submit()
     return jsonify(workflow_id=job.id), http.HTTPStatus.ACCEPTED
 
 
